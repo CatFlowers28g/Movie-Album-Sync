@@ -1,6 +1,6 @@
 # FFmpeg AppleScript Apps
 
-Four standalone macOS applications for streamlined ffmpeg workflows. Each app provides a user-friendly interface with dialog prompts instead of requiring terminal knowledge.
+Five standalone macOS applications for streamlined ffmpeg workflows. Each app provides a user-friendly interface with dialog prompts instead of requiring terminal knowledge.
 
 ## Apps Included
 
@@ -50,7 +50,7 @@ Merges multiple FLAC audio files into a single file using ffmpeg's concat demuxe
 
 ---
 
-### 4. **Test Clip Extractor** ⭐ NEW
+### 4. **Test Clip Extractor**
 Extracts a short segment from the beginning of your video with audio sync already applied.
 
 **Features:**
@@ -66,6 +66,25 @@ Extracts a short segment from the beginning of your video with audio sync alread
 
 ---
 
+### 5. **Video/Audio Re-Encoder** ⭐ NEW
+Re-encodes video and/or audio files with customizable resolution, codec, and quality settings.
+
+**Features:**
+- Process video only, audio only, or both simultaneously
+- **Video Codec Presets:** H.264 (MP4), HEVC/H.265 (MP4), VP9 (WebM), ProRes (MOV)
+- **Resolution Presets:** 4K (2160p), 1080p (Full HD), 720p (HD), 480p (SD), or custom
+- **Video Quality:** Low (1500kbps), Medium (3000kbps), High (6000kbps), Very High (12000kbps), or custom
+- **Audio Codec Presets:** AAC (MP4), FLAC (Lossless), MP3, Opus
+- **Audio Quality:** Low (128kbps), Medium (192kbps), High (320kbps), Lossless, or custom
+- Automatic timestamp-based output naming
+- Real-time progress display in Terminal
+
+**Output Formats:** MP4, WebM, MOV, FLAC, MP3, M4A, or Opus (depending on selections)
+
+**Use Case:** Convert videos between formats, reduce file size with lower bitrates, upscale/downscale resolution, convert between audio codecs, create multi-format versions for different platforms.
+
+---
+
 ## Installation & Usage
 
 ### Quick Start
@@ -76,6 +95,7 @@ Extracts a short segment from the beginning of your video with audio sync alread
    ~/Applications/FFmpeg Info Logger.app
    ~/Applications/FLAC Combiner.app
    ~/Applications/Test Clip Extractor.app
+   ~/Applications/Video Audio Re-Encoder.app
    ```
 
 2. **To run an app:**
@@ -182,6 +202,7 @@ The AppleScript source code is available in this directory:
 - `02-FFmpeg-Info-Logger.applescript`
 - `03-FLAC-Combiner.applescript`
 - `04-Test-Clip-Extractor.applescript`
+- `05-Video-Audio-Reencoder.applescript`
 
 You can edit these files and recompile using `compile-apps.sh` if you need to customize behavior or commands.
 
