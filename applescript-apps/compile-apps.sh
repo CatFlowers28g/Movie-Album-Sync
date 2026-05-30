@@ -20,6 +20,7 @@ declare -a apps=(
     "02-FFmpeg-Info-Logger.applescript:FFmpeg Info Logger"
     "03-FLAC-Combiner.applescript:FLAC Combiner"
     "04-Test-Clip-Extractor.applescript:Test Clip Extractor"
+    "05-Video-Audio-Reencoder.applescript:Video Audio Re-Encoder"
 )
 
 # Compile each app
