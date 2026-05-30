@@ -5,7 +5,7 @@
 on run
 	try
 		-- Get video file
-		set videoFile to choose file with prompt "Select the video file (MKV or MP4):" {"mp4", "mkv", "mov"}
+		set videoFile to choose file with prompt "Select the video file (MKV or MP4):" of type {"mp4", "mkv", "mov"}
 		set videoPath to POSIX path of videoFile
 		
 		-- Get audio file
