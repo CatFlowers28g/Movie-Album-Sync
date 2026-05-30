@@ -5,11 +5,11 @@
 on run
 	try
 		-- Get video file
-		set videoFile to choose file with prompt "Select the video file (MKV or MP4):" of type {"public.video"}
+		set videoFile to choose file with prompt "Select the video file (MKV or MP4):" of type {"mp4", "mkv", "mov"}
 		set videoPath to POSIX path of videoFile
 		
 		-- Get audio file
-		set audioFile to choose file with prompt "Select the audio file (FLAC or MP3):" of type {"public.audio"}
+		set audioFile to choose file with prompt "Select the audio file (FLAC or MP3):" of type {"mp3", "flac", "wav", "m4a"}
 		set audioPath to POSIX path of audioFile
 		
 		-- Get audio delay in milliseconds
