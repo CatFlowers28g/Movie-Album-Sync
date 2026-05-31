@@ -1,95 +1,49 @@
-# FFmpeg AppleScript Apps
+# FFmpeg AppleScript Toolkit
 
-Four standalone macOS applications for streamlined ffmpeg workflows. Each app provides a user-friendly interface with dialog prompts instead of requiring terminal knowledge.
+One unified macOS app for all ffmpeg workflows in this folder. The source now builds a single app that contains the following tools:
 
-## Apps Included
+- Movie Sync Audio
+- FFmpeg Info Logger
+- FLAC Combiner
+- Test Clip Extractor
+- Transcode Final Product
 
-### 1. **Movie Sync Audio** 
-Syncs an audio track to a video file with customizable delay.
+## Unified App
 
-**Features:**
-- Select video file (MKV or MP4)
-- Select audio file (FLAC or MP3)
-- Set audio delay in milliseconds (default: 36000ms = 36 seconds)
-- Specify output filename and location
-- Real-time progress in Terminal
-
-**Output Format:** Matroska (MKV) with copied video + FLAC audio
-
-**Use Case:** Sync Dark Side of the Moon to Wizard of Oz, or any other album to film combination.
-
----
-
-### 2. **FFmpeg Info Logger**
-Generates detailed ffmpeg information and diagnostics for any media file.
+### **Unified FFmpeg Toolkit**
+A single AppleScript toolkit that merges all workflow logic into one app. Choose the tool you need from a menu and follow the prompts.
 
 **Features:**
-- Select any media file (video, audio, etc.)
-- Auto-generates log filename based on input
-- Produces complete ffmpeg analysis output
-- Shows stream info, codecs, duration, bitrates, etc.
+- Sync audio to video with adjustable delay
+- Generate ffmpeg analysis logs
+- Combine multiple FLAC audio tracks
+- Extract synced test clips
+- Transcode final output to different containers, codecs, and resolutions
 
-**Output Format:** Text file with full ffmpeg verbose output
-
-**Use Case:** Analyze media files before processing, check codec compatibility, inspect stream information.
-
----
-
-### 3. **FLAC Combiner**
-Merges multiple FLAC audio files into a single file using ffmpeg's concat demuxer.
-
-**Features:**
-- Select multiple FLAC files at once
-- Auto-creates concat list file
-- Choose output filename and location
-- Lossless audio merging (no re-encoding)
-
-**Output Format:** Single FLAC file
-
-**Use Case:** Combine individual album tracks or segments into one continuous file.
-
----
-
-### 4. **Test Clip Extractor** ⭐ NEW
-Extracts a short segment from the beginning of your video with audio sync already applied.
-
-**Features:**
-- Select video and audio files
-- Set clip duration in minutes (default: 3 minutes)
-- Set audio delay matching your main sync settings
-- Specify output filename and location
-- Fast extraction with audio sync validated
-
-**Output Format:** Matroska (MKV) with trimmed video + synced audio
-
-**Use Case:** Quick verification that audio/video sync timing is correct before running full encoding. Extract first 3 minutes, watch it, and if sync is perfect, run the main "Movie Sync Audio" app for the full video.
-
----
+**Output:** User-selected output files produced through ffmpeg, with progress shown in Terminal.
 
 ## Installation & Usage
 
 ### Quick Start
 
-1. **The apps are already compiled and located at:**
+1. **The app is already compiled and located at:**
    ```
-   ~/Applications/Movie Sync Audio.app
-   ~/Applications/FFmpeg Info Logger.app
-   ~/Applications/FLAC Combiner.app
-   ~/Applications/Test Clip Extractor.app
+   ~/Applications/Unified FFmpeg Toolkit.app
    ```
 
-2. **To run an app:**
+2. **To run the app:**
    - Open Finder → Applications (or ~/Applications)
-   - Double-click the desired .app
+   - Double-click `Unified FFmpeg Toolkit.app`
+   - Choose the tool you need from the menu
    - Follow the dialog prompts to select files and parameters
-   - Terminal window opens automatically to show processing progress
+   - Terminal window opens automatically to show progress
 
-3. **If you need to recompile the apps:**
+3. **If you need to recompile the app:**
    ```bash
    cd /path/to/applescript-apps
    bash compile-apps.sh
    ```
-   This will recompile all scripts from their source files and place updated .app files in ~/Applications
+   This will recompile the unified app and place it in `~/Applications`
 
 ---
 
@@ -98,23 +52,24 @@ Extracts a short segment from the beginning of your video with audio sync alread
 ### For syncing audio to video (like album to film):
 
 1. **First, create an FFmpeg Log** to inspect your files
-   - Run: **FFmpeg Info Logger**
-   - Select your video and audio files
-   - Review the generated .txt logs to confirm codecs and streams
+   - Open `Unified FFmpeg Toolkit.app`
+   - Choose `FFmpeg Info Logger`
+   - Select your video or audio file
+   - Review the generated `.txt` log to confirm codecs and streams
 
 2. **Test with a short clip** to verify sync timing
-   - Run: **Test Clip Extractor**
-   - Extract first 3 minutes with your desired audio delay
-   - Watch the test clip to confirm audio/video sync is correct
+   - Choose `Test Clip Extractor`
+   - Extract the first few minutes with your desired audio delay
+   - Watch the clip to confirm audio/video sync
 
 3. **Extract and combine audio if needed**
-   - Run: **FLAC Combiner** (if you have separate FLAC tracks)
-   - Merge individual tracks into one continuous audio file
+   - Choose `FLAC Combiner` if you have separate FLAC tracks
+   - Merge individual tracks into one continuous file
 
 4. **Create the final synced video**
-   - Run: **Movie Sync Audio**
+   - Choose `Movie Sync Audio`
    - Use the same audio delay you validated in step 2
-   - Process full-length video and audio
+   - Process the full-length video and audio
 
 ---
 
@@ -178,12 +133,9 @@ The apps intentionally show Terminal window during processing so you can:
 ## Source Files
 
 The AppleScript source code is available in this directory:
-- `01-Movie-Sync-Audio.applescript`
-- `02-FFmpeg-Info-Logger.applescript`
-- `03-FLAC-Combiner.applescript`
-- `04-Test-Clip-Extractor.applescript`
+- `00-Unified-FFmpeg-Toolkit.applescript`
 
-You can edit these files and recompile using `compile-apps.sh` if you need to customize behavior or commands.
+You can edit this file and recompile using `compile-apps.sh` if you need to customize behavior or commands.
 
 ---
 

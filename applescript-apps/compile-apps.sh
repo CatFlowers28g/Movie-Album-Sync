@@ -1,5 +1,5 @@
 #!/bin/bash
-# Compile AppleScript files into .app bundles
+# Compile the unified AppleScript app into a .app bundle
 # Usage: bash compile-apps.sh
 
 set -e
@@ -10,16 +10,13 @@ OUTPUT_DIR="$HOME/Applications"
 # Create output directory if it doesn't exist
 mkdir -p "$OUTPUT_DIR"
 
-echo "Compiling AppleScript files to .app bundles..."
+echo "Compiling the unified AppleScript app to a .app bundle..."
 echo "Output directory: $OUTPUT_DIR"
 echo ""
 
 # Array of AppleScript files and their corresponding app names
 declare -a apps=(
-    "01-Movie-Sync-Audio.applescript:Movie Sync Audio"
-    "02-FFmpeg-Info-Logger.applescript:FFmpeg Info Logger"
-    "03-FLAC-Combiner.applescript:FLAC Combiner"
-    "04-Test-Clip-Extractor.applescript:Test Clip Extractor"
+    "00-Unified-FFmpeg-Toolkit.applescript:Unified FFmpeg Toolkit"
 )
 
 # Compile each app
@@ -51,10 +48,10 @@ for app in "${apps[@]}"; do
     echo ""
 done
 
-echo "All apps compiled!"
-echo "You can find them in: $OUTPUT_DIR"
+echo "Unified app compiled!"
+echo "You can find it in: $OUTPUT_DIR"
 echo ""
-echo "To use these apps:"
+echo "To use the app:"
 echo "1. Open Finder and navigate to $OUTPUT_DIR"
-echo "2. Double-click any .app to run it"
-echo "3. The app will guide you through file selection and parameter input"
+echo "2. Double-click Unified FFmpeg Toolkit.app"
+echo "3. Choose the tool you want and follow the prompts"
