@@ -28,12 +28,12 @@ on movieSyncAudio()
     set videoPath to POSIX path of videoFile
     set audioFile to choose file with prompt "Select the audio file (FLAC or MP3):" of type {"mp3", "flac", "wav", "m4a"}
     set audioPath to POSIX path of audioFile
-    display dialog "Enter audio delay in milliseconds (default: 36000ms = 36 seconds):" default answer "36000"
+    display dialog "Enter audio offset in milliseconds (positive = audio starts later than the movie; negative = audio starts before the movie and black screen fills the gap):" default answer "36000"
     set audioDelay to text returned of result
     try
         set audioDelay to audioDelay as integer
     on error
-        display dialog "Error: Audio delay must be a number!" buttons {"OK"} default button 1 with icon caution
+        display dialog "Error: Audio offset must be a number!" buttons {"OK"} default button 1 with icon caution
         return
     end try
     set defaultOutput to "SyncedOutput.mkv"
@@ -41,7 +41,13 @@ on movieSyncAudio()
     set outputFilename to text returned of result
     set outputFolder to choose folder with prompt "Choose where to save the output file:"
     set outputPath to (POSIX path of outputFolder) & outputFilename
-    set ffmpegCommand to "ffmpeg -i " & quoted form of videoPath & " -stream_loop -1 -i " & quoted form of audioPath & " -filter_complex \"[1:a]adelay=" & audioDelay & "|" & audioDelay & ",apad[aud]\" -map 0:v -map \"[aud]\" -c:v copy -c:a flac -shortest " & quoted form of outputPath
+    if audioDelay is greater than or equal to 0 then
+        set ffmpegCommand to "ffmpeg -i " & quoted form of videoPath & " -stream_loop -1 -i " & quoted form of audioPath & " -filter_complex \"[1:a]adelay=" & audioDelay & "|" & audioDelay & ",apad[aud]\" -map 0:v -map \"[aud]\" -c:v copy -c:a flac -shortest " & quoted form of outputPath
+    else
+        set leadMs to audioDelay * -1
+        set leadSec to leadMs / 1000.0
+        set ffmpegCommand to "ffmpeg -stream_loop -1 -i " & quoted form of audioPath & " -itsoffset " & leadSec & " -i " & quoted form of videoPath & " -filter_complex \"[0:a]apad[aud]\" -map 1:v -map \"[aud]\" -c:v copy -c:a flac -shortest " & quoted form of outputPath
+    end if
     display dialog "Ready to process:" & return & return & "Video: " & videoPath & return & "Audio: " & audioPath & return & "Delay: " & audioDelay & "ms" & return & "Output: " & outputPath buttons {"Cancel", "Process"} default button 2
     if button returned of result is "Cancel" then return
     tell application "Terminal"
@@ -118,12 +124,12 @@ on testClipExtractor()
         return
     end try
     set durationSeconds to durationMinutes * 60
-    display dialog "Enter audio delay in milliseconds (default: 36000ms = 36 seconds):" default answer "36000"
+    display dialog "Enter audio offset in milliseconds (positive = audio starts later than the movie; negative = audio starts before the movie and black screen fills the gap):" default answer "36000"
     set audioDelay to text returned of result
     try
         set audioDelay to audioDelay as integer
     on error
-        display dialog "Error: Audio delay must be a number!" buttons {"OK"} default button 1 with icon caution
+        display dialog "Error: Audio offset must be a number!" buttons {"OK"} default button 1 with icon caution
         return
     end try
     set defaultOutput to "TEST_" & durationMinutes & "min.mkv"
@@ -131,7 +137,13 @@ on testClipExtractor()
     set outputFilename to text returned of result
     set outputFolder to choose folder with prompt "Choose where to save the test clip:"
     set outputPath to (POSIX path of outputFolder) & outputFilename
-    set ffmpegCommand to "ffmpeg -ss 0 -i " & quoted form of videoPath & " -stream_loop -1 -i " & quoted form of audioPath & " -t " & durationSeconds & " -filter_complex \"[1:a]adelay=" & audioDelay & "|" & audioDelay & ",apad[aud]\" -map 0:v -map \"[aud]\" -c:v copy -c:a flac " & quoted form of outputPath
+    if audioDelay is greater than or equal to 0 then
+        set ffmpegCommand to "ffmpeg -ss 0 -i " & quoted form of videoPath & " -stream_loop -1 -i " & quoted form of audioPath & " -t " & durationSeconds & " -filter_complex \"[1:a]adelay=" & audioDelay & "|" & audioDelay & ",apad[aud]\" -map 0:v -map \"[aud]\" -c:v copy -c:a flac " & quoted form of outputPath
+    else
+        set leadMs to audioDelay * -1
+        set leadSec to leadMs / 1000.0
+        set ffmpegCommand to "ffmpeg -stream_loop -1 -i " & quoted form of audioPath & " -itsoffset " & leadSec & " -i " & quoted form of videoPath & " -t " & durationSeconds & " -filter_complex \"[0:a]apad[aud]\" -map 1:v -map \"[aud]\" -c:v copy -c:a flac " & quoted form of outputPath
+    end if
     display dialog "Ready to extract test clip:" & return & return & "Video: " & videoPath & return & "Audio: " & audioPath & return & "Duration: " & durationMinutes & " minutes" & return & "Audio Delay: " & audioDelay & "ms" & return & "Output: " & outputPath buttons {"Cancel", "Extract"} default button 2
     if button returned of result is "Cancel" then return
     tell application "Terminal"
