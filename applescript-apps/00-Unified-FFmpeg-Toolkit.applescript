@@ -4,7 +4,7 @@
 on run
     try
         set appsList to {"Movie Sync Audio", "FFmpeg Info Logger", "FLAC Combiner", "Test Clip Extractor", "Transcode Final Product"}
-        set chosen to choose from list appsList with prompt "Choose a tool to run:" default items {item 1 of appsList}
+        set chosen to choose from list appsList with prompt "Choose a tool to run:" default items {"Movie Sync Audio"}
         if chosen is false then return
         set selectedTool to item 1 of chosen
         if selectedTool is "Movie Sync Audio" then
@@ -22,6 +22,8 @@ on run
         display dialog "Error: " & errMsg buttons {"OK"} default button 1 with icon caution
     end try
 end run
+
+
 
 on movieSyncAudio()
     set videoFile to choose file with prompt "Select the video file (MKV or MP4):" of type {"mp4", "mkv", "mov"}

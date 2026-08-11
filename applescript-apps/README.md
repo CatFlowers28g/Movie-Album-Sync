@@ -26,13 +26,21 @@ A single AppleScript toolkit that merges all workflow logic into one app. Choose
 
 ### Quick Start
 
-1. **The app is already compiled and located at:**
+1. **The app is already compiled and located at one of these locations:**
+   ```
+   ~/Library/Mobile Documents/com~apple~CloudDocs/Documents/Unified FFmpeg Toolkit.app
+   ```
+   or, if that folder cannot be written to:
+   ```
+   /Applications/Unified FFmpeg Toolkit.app
+   ```
+   or:
    ```
    ~/Applications/Unified FFmpeg Toolkit.app
    ```
 
 2. **To run the app:**
-   - Open Finder → Applications (or ~/Applications)
+   - Open Finder and navigate to the folder shown by the build script
    - Double-click `Unified FFmpeg Toolkit.app`
    - Choose the tool you need from the menu
    - Follow the dialog prompts to select files and parameters
@@ -43,7 +51,7 @@ A single AppleScript toolkit that merges all workflow logic into one app. Choose
    cd /path/to/applescript-apps
    bash compile-apps.sh
    ```
-   This will recompile the unified app and place it in `~/Applications`
+   This will recompile the unified app and place it in `~/Library/Mobile Documents/com~apple~CloudDocs/Documents/GitHub` by default. If that location is not writable, it falls back to `/Applications` or `~/Applications`.
 
 ---
 

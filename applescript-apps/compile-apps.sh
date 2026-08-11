@@ -5,7 +5,20 @@
 set -e
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-OUTPUT_DIR="$HOME/Applications"
+OUTPUT_DIR="${OUTPUT_DIR:-$HOME/Library/Mobile Documents/com~apple~CloudDocs/Documents}"
+
+# Prefer the iCloud Documents folder, otherwise fallback to /Applications or ~/Applications
+if [ ! -w "$OUTPUT_DIR" ]; then
+    if mkdir -p "$OUTPUT_DIR" 2>/dev/null; then
+        :
+    elif [ -w "/Applications" ]; then
+        OUTPUT_DIR="/Applications"
+        echo "Note: using /Applications because the iCloud destination is not writable."
+    else
+        OUTPUT_DIR="$HOME/Applications"
+        echo "Note: using $OUTPUT_DIR because no other output location is writable."
+    fi
+fi
 
 # Create output directory if it doesn't exist
 mkdir -p "$OUTPUT_DIR"
