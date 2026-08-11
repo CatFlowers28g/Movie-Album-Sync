@@ -28,7 +28,7 @@ on movieSyncAudio()
     set videoPath to POSIX path of videoFile
     set audioFile to choose file with prompt "Select the audio file (FLAC or MP3):" of type {"mp3", "flac", "wav", "m4a"}
     set audioPath to POSIX path of audioFile
-    display dialog "Enter audio offset in milliseconds (positive = audio starts later than the movie; negative = audio starts before the movie and black screen fills the gap):" default answer "36000"
+    display dialog "Enter audio offset in milliseconds:\n  • positive = audio starts after the video\n  • negative = audio starts before the video and black screen fills the gap\nExample: -5000 for 5 seconds early audio" default answer "36000"
     set audioDelay to text returned of result
     try
         set audioDelay to audioDelay as integer
@@ -124,7 +124,7 @@ on testClipExtractor()
         return
     end try
     set durationSeconds to durationMinutes * 60
-    display dialog "Enter audio offset in milliseconds (positive = audio starts later than the movie; negative = audio starts before the movie and black screen fills the gap):" default answer "36000"
+    display dialog "Enter audio offset in milliseconds:\n  • positive = audio starts after the video\n  • negative = audio starts before the video and black screen fills the gap\nExample: -5000 for 5 seconds early audio" default answer "36000"
     set audioDelay to text returned of result
     try
         set audioDelay to audioDelay as integer
