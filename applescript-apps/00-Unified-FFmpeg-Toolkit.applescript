@@ -142,7 +142,7 @@ on testClipExtractor()
     else
         set leadMs to audioDelay * -1
         set leadSec to leadMs / 1000.0
-        set ffmpegCommand to "ffmpeg -stream_loop -1 -i " & quoted form of audioPath & " -itsoffset " & leadSec & " -i " & quoted form of videoPath & " -t " & durationSeconds & " -filter_complex \"[0:a]apad[aud]\" -map 1:v -map \"[aud]\" -c:v copy -c:a flac " & quoted form of outputPath
+        set ffmpegCommand to "ffmpeg -i " & quoted form of videoPath & " -stream_loop -1 -i " & quoted form of audioPath & " -t " & durationSeconds & " -filter_complex \"[0:v]tpad=start_duration=" & leadSec & ":start_mode=add:color=black[v];[1:a]apad[aud]\" -map \"[v]\" -map \"[aud]\" -c:v libx264 -preset slow -crf 18 -c:a flac " & quoted form of outputPath
     end if
     display dialog "Ready to extract test clip:" & return & return & "Video: " & videoPath & return & "Audio: " & audioPath & return & "Duration: " & durationMinutes & " minutes" & return & "Audio Delay: " & audioDelay & "ms" & return & "Output: " & outputPath buttons {"Cancel", "Extract"} default button 2
     if button returned of result is "Cancel" then return
