@@ -13,15 +13,17 @@ from typing import Callable
 
 from PySide6.QtCore import QSettings, QSize, Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import QColor, QDesktopServices, QFont, QFontDatabase, QIcon, QPainter, QPalette
+from PySide6.QtNetwork import QSslSocket
 from PySide6.QtWidgets import (
     QAbstractItemView, QApplication, QColorDialog, QComboBox, QDoubleSpinBox, QFileDialog, QFormLayout,
     QFrame, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QListWidget, QListWidgetItem, QMainWindow,
-    QMessageBox, QPlainTextEdit, QProgressBar, QPushButton, QScrollArea, QSpinBox, QTabWidget, QVBoxLayout,
-    QWidget,
+    QMessageBox, QPlainTextEdit, QProgressBar, QProgressDialog, QPushButton, QScrollArea, QSpinBox, QTabWidget,
+    QVBoxLayout, QWidget,
 )
 
-from . import __version__, commands, themes
+from . import __version__, commands, themes, updater
 from .ffmpeg import NO_WINDOW, FFmpegJob, find_ffmpeg, media_info, probe_duration
+from .updater import Release, UpdateChecker, UpdateDownloader
 from .themes import CUSTOM, SYSTEM, Theme
 
 APP_NAME = "Movie Album Sync"
@@ -175,8 +177,8 @@ def system_look() -> tuple[str, QPalette, QFont]:
 
 
 def clean_temp_files():
-    """Remove previews and track lists left over from earlier runs."""
-    for pattern in ("preview-*.mkv", "tracks-*.txt"):
+    """Remove previews, track lists, and update downloads left over from earlier runs."""
+    for pattern in ("preview-*.*", "tracks-*.txt", "update/*"):
         for path in TEMP_DIR.glob(pattern):
             try:
                 path.unlink()
@@ -785,6 +787,13 @@ class SettingsPage(Page):
         self.form.addRow("Text size:", self.text_size)
         self.form.addRow("Font:", self.font_choice)
         self.form.addRow("Sound when done:", self.sound)
+        updates = QHBoxLayout()
+        updates.addWidget(QLabel(f"Version {__version__}"))
+        check = QPushButton("Check for Updates")
+        check.clicked.connect(lambda: self.main.check_for_updates(quiet=False))
+        updates.addWidget(check)
+        updates.addStretch()
+        self.form.addRow("Updates:", updates)
         self.page_layout.addStretch()
 
         reset = QPushButton("Reset to Defaults")
@@ -920,6 +929,86 @@ class MainWindow(QMainWindow):
         layout.addWidget(panel)
         self.setCentralWidget(central)
         self.apply_appearance()
+
+        self._quiet_update_check = True
+        self._downloader: UpdateDownloader | None = None
+        self.update_checker = UpdateChecker(self)
+        self.update_checker.found.connect(self._update_found)
+        self.update_checker.up_to_date.connect(self._up_to_date)
+        self.update_checker.failed.connect(self._update_check_failed)
+        if getattr(sys, "frozen", False) and "--self-test" not in sys.argv:
+            QTimer.singleShot(2500, lambda: self.check_for_updates(quiet=True))  # once the window is up
+
+    def check_for_updates(self, quiet: bool):
+        """Look for a newer release on GitHub; quiet checks only speak up when there is one."""
+        self._quiet_update_check = quiet
+        self.update_checker.check()
+
+    def _up_to_date(self):
+        if not self._quiet_update_check:
+            QMessageBox.information(self, APP_NAME, f"You have the latest version ({__version__}).")
+
+    def _update_check_failed(self, message: str):
+        if not self._quiet_update_check:
+            QMessageBox.warning(self, APP_NAME, "Couldn't check for updates. Check your internet connection "
+                                                f"and try again.\n\n({message})")
+
+    def _update_found(self, release: Release):
+        installable = updater.can_install(release)
+        box = QMessageBox(self)
+        box.setWindowTitle(APP_NAME)
+        box.setIcon(QMessageBox.Icon.Information)
+        box.setTextFormat(Qt.TextFormat.MarkdownText)
+        text = f"**Movie Album Sync {release.version} is available.** You have version {__version__}."
+        if release.notes:
+            text += f"\n\n**What's new**\n\n{release.notes[:2000]}"
+        box.setText(text)
+        update = box.addButton("Update Now" if installable else "Open Download Page", QMessageBox.ButtonRole.AcceptRole)
+        box.addButton("Later", QMessageBox.ButtonRole.RejectRole)
+        box.exec()
+        if box.clickedButton() is not update:
+            return
+        if not installable:
+            QDesktopServices.openUrl(QUrl(release.page_url))
+        elif self.job and self.job.isRunning():
+            QMessageBox.information(self, APP_NAME, "Let the current job finish first, then use "
+                                                    "Settings → Check for Updates.")
+        else:
+            self._download_update(release)
+
+    def _download_update(self, release: Release):
+        self._update_dialog = QProgressDialog(f"Downloading Movie Album Sync {release.version}...", "Cancel",
+                                              0, 100, self)
+        self._update_dialog.setWindowTitle(APP_NAME)
+        self._update_dialog.setWindowModality(Qt.WindowModality.WindowModal)
+        self._update_dialog.setMinimumDuration(0)
+        self._update_dialog.setAutoClose(False)
+        self._update_dialog.setAutoReset(False)
+        self._downloader = UpdateDownloader(release, TEMP_DIR / "update", self)
+        self._downloader.progress.connect(self._update_download_progress)
+        self._downloader.done.connect(self._install_update)
+        self._downloader.failed.connect(self._update_download_failed)
+        self._update_dialog.canceled.connect(self._downloader.cancel)
+        self._downloader.start()
+        self._update_dialog.show()
+
+    def _update_download_progress(self, received: int, total: int):
+        if total > 0:
+            self._update_dialog.setValue(received * 100 // total)
+
+    def _update_download_failed(self, message: str):
+        cancelled = self._update_dialog.wasCanceled()
+        self._update_dialog.close()
+        if not cancelled:
+            QMessageBox.warning(self, APP_NAME, f"The update couldn't be downloaded:\n{message}")
+
+    def _install_update(self, download: str):
+        self._update_dialog.close()
+        updater.install(download)
+        if IS_MAC:
+            QMessageBox.information(self, APP_NAME, "Drag Movie Album Sync into the Applications folder and choose "
+                                                    "Replace. Then open it again.")
+        self.close()  # the Windows installer reopens the app when it's done
 
     def theme_name(self) -> str:
         """The saved theme's name, falling back to System if it's unknown or the custom one is unreadable."""
@@ -1070,6 +1159,9 @@ def self_test() -> int:
     app.processEvents()
     version = result.stdout.splitlines()[0] if result.stdout else "no output"
     print(f"Self-test {'passed' if result.returncode == 0 else 'failed'}: {ffmpeg} ({version})")
+    if not QSslSocket.supportsSsl():  # update checks need HTTPS
+        print("Self-test failed: secure connections aren't available, so update checks won't work")
+        return 1
     return result.returncode
 
 

@@ -27,11 +27,26 @@ Every version is published on the repo's **Releases** page:
 
 To check which Mac you have: Apple menu → **About This Mac** → **Chip** (Apple M-something) or **Processor** (Intel).
 
-### Making a release
+### Pushing out an update
 
-1. Bump `__version__` in `movie_album_sync/__init__.py` and commit.
-2. Tag and push: `git tag v1.2.0`, then `git push origin v1.2.0`.
-3. GitHub builds all three platforms in about 10 minutes, then publishes the Release with the downloads attached.
+From the repo root, on `main` with everything committed:
+
+```powershell
+.\release.ps1 1.2.0 "Added a Star Wars theme and fixed the preview button"
+```
+
+1. The script sets the version, commits it, and pushes a `v1.2.0` tag carrying your notes.
+2. GitHub builds all three platforms in about 10 minutes, then publishes the Release with the downloads attached and your notes as its description.
+3. The next time anyone opens the app, it shows **"Movie Album Sync 1.2.0 is available"** with your notes.
+   - **Windows:** **Update Now** downloads the installer, installs it silently, and reopens the app. Settings are kept.
+   - **Mac:** it downloads the `.dmg` and opens it, so they drag the app into Applications and choose Replace.
+
+Things to know:
+- **Versions must go up.** Use the last number for fixes (1.2.0 → 1.2.1) and the middle one for features (→ 1.3.0). The app only offers higher versions.
+- **Write the notes for the people using the app**, since they appear in the update popup.
+- **A bad release?** Release a fixed, higher version. You can also delete the broken Release on GitHub so it isn't offered in the meantime.
+- **Version 1.1.0 has no updater.** Anyone on 1.1.0 needs to install a newer version by hand once.
+- Settings → **Check for Updates** checks right away. Updates are only installed by the packaged app; running from source just links to the download page.
 
 Every push that changes the app also runs the build (without publishing a release). The files are under the run's *Artifacts* on the **Actions** tab, which is handy for testing before tagging.
 

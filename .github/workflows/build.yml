@@ -1,7 +1,8 @@
 # Builds the Windows installer and the Mac disk images (Apple Silicon and Intel).
 # - Runs on every push that changes the app, so a broken build shows up right away.
 #   Download the files from the run's Artifacts section.
-# - Push a version tag (e.g. git tag v1.2.0 && git push origin v1.2.0) to also publish a GitHub Release.
+# - Pushing a version tag also publishes a GitHub Release, with the tag's message as the release notes.
+#   release.ps1 at the repo root does this in one step: .\release.ps1 1.2.0 "What's new"
 name: Build apps
 
 on:
@@ -58,10 +59,17 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v5
+      - name: Use the tag's message as the release notes
+        run: |
+          git fetch --force origin "refs/tags/$GITHUB_REF_NAME:refs/tags/$GITHUB_REF_NAME"
+          git tag -l --format='%(contents)' "$GITHUB_REF_NAME" > release-notes.md
       - uses: actions/download-artifact@v4
         with:
           path: downloads
           merge-multiple: true
       - uses: softprops/action-gh-release@v2
         with:
+          name: Movie Album Sync ${{ github.ref_name }}
+          body_path: release-notes.md
           files: downloads/*

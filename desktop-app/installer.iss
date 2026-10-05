@@ -45,3 +45,5 @@ Name: "{autodesktop}\Movie Album Sync"; Filename: "{app}\MovieAlbumSync.exe"; Ta
 
 [Run]
 Filename: "{app}\MovieAlbumSync.exe"; Description: "{cm:LaunchProgram,Movie Album Sync}"; Flags: nowait postinstall skipifsilent
+; Updates started from inside the app run silently; reopen the app when they finish
+Filename: "{app}\MovieAlbumSync.exe"; Flags: nowait skipifnotsilent
