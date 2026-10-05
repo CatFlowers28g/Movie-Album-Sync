@@ -4,11 +4,12 @@ A point-and-click toolkit for syncing an album to a movie with ffmpeg, plus help
 
 | Platform | Folder | How to get it |
 |----------|--------|---------------|
-| **Windows** | [desktop-app/](desktop-app/) | **Movie Album Sync** desktop app. Install it with `MovieAlbumSync-Setup.exe`; ffmpeg is built in. |
-| macOS    | [applescript-apps/](applescript-apps/) | AppleScript app: run `bash compile-apps.sh`, then open `Unified FFmpeg Toolkit.app`. |
+| **Windows** | [desktop-app/](desktop-app/) | **Movie Album Sync** desktop app: `MovieAlbumSync-Setup.exe` from [Releases](../../releases). ffmpeg is built in. |
+| **macOS** | [desktop-app/](desktop-app/) | **Movie Album Sync** desktop app: the `.dmg` for your Mac's chip (Apple Silicon or Intel) from [Releases](../../releases). |
+| macOS (older) | [applescript-apps/](applescript-apps/) | The original AppleScript app: run `bash compile-apps.sh`, then open `Unified FFmpeg Toolkit.app`. Kept until the desktop app has been tested on Mac. |
 | Linux    | [linux-app/](linux-app/) | zenity-based script: run `bash install.sh`, then open it from the app menu. |
 
-The desktop app is written in Python + Qt, so it can be built for Mac and Linux later. Once those builds exist, they will replace the two script versions.
+The desktop app is written in Python + Qt. A Linux build of it could replace the Linux script later.
 
 See [desktop-app/README.md](desktop-app/README.md) for how to build the installer and share it.
 

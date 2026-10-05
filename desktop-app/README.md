@@ -1,6 +1,6 @@
 # Movie Album Sync — desktop app
 
-A single-window app for syncing an album to a movie. It's built for people who don't want to touch a terminal. ffmpeg is built in, so there's nothing else to install.
+A single-window app for syncing an album to a movie, for **Windows and Mac**. It's built for people who don't want to touch a terminal. ffmpeg is built in, so there's nothing else to install.
 
 | Tab | What it does |
 |-----|--------------|
@@ -14,23 +14,43 @@ The app remembers the last timing, format, preview length, convert choices, fold
 
 ---
 
-## Sharing it with someone
+## Downloads
 
-Send them the **installer**: `MovieAlbumSync-<version>-Setup.exe` (about 70 MB).
+Every version is published on the repo's **Releases** page:
 
-To get the installer, use either option:
-- **On GitHub (no setup needed):** open the repo's **Actions** tab → **Build Windows app** → **Run workflow**. When the run finishes, download **MovieAlbumSync-Windows** from the run's *Artifacts* section.
-  - To get a permanent download link instead, push a version tag and the files are attached to a GitHub Release: `git tag v1.0.0`, then `git push origin v1.0.0`. Send your friend the release page link.
-- **On your own PC:** run `.\build-windows.ps1` in PowerShell from this folder. The files appear in `dist\`.
+| File | For |
+|------|-----|
+| `MovieAlbumSync-<version>-Setup.exe` | Windows (installer) |
+| `MovieAlbumSync-<version>-Portable.zip` | Windows, no install needed |
+| `MovieAlbumSync-<version>-Mac-AppleSilicon.dmg` | Macs with an M1–M4 chip (late 2020 and newer) |
+| `MovieAlbumSync-<version>-Mac-Intel.dmg` | Older Intel Macs |
 
-### Instructions to send along
+To check which Mac you have: Apple menu → **About This Mac** → **Chip** (Apple M-something) or **Processor** (Intel).
+
+### Making a release
+
+1. Bump `__version__` in `movie_album_sync/__init__.py` and commit.
+2. Tag and push: `git tag v1.2.0`, then `git push origin v1.2.0`.
+3. GitHub builds all three platforms in about 10 minutes, then publishes the Release with the downloads attached.
+
+Every push that changes the app also runs the build (without publishing a release). The files are under the run's *Artifacts* on the **Actions** tab, which is handy for testing before tagging.
+
+You can also build on your own computer: `.\build-windows.ps1` on Windows (needs Python 3 and Inno Setup 6), or `bash build-mac.sh` on a Mac (needs Python 3). The files appear in `dist/`.
+
+### First-launch instructions to send along
+
+Windows:
 
 > 1. Download **MovieAlbumSync-Setup.exe** and open it.
-> 2. Windows may show **"Windows protected your PC"**. This happens because the app isn't from a big company. Click **More info → Run anyway**.
+> 2. If Windows says **"Windows protected your PC"**, click **More info → Run anyway**. That warning shows up because it's a homemade app, not something from a big company.
 > 3. Click through the installer. A **Movie Album Sync** icon appears on your desktop.
-> 4. Open it, choose the movie and the album, set when the album should start, and press **Preview** to check the timing. When it looks right, press **Sync Movie**.
 
-There's also a `Portable.zip` that runs without installing: unzip it, then open `MovieAlbumSync.exe` inside. The installer is simpler for most people.
+Mac:
+
+> 1. Download the **.dmg** for your Mac and open it. Drag **Movie Album Sync** onto the **Applications** folder.
+> 2. Open it from Applications. The first time, macOS says it **can't verify the app**. Click **Done**, then go to **System Settings → Privacy & Security**, scroll down, and click **Open Anyway** next to Movie Album Sync. That's only needed once.
+
+Then: choose the movie and the album, set when the album should start, and press **Preview** to check the timing. When it looks right, press **Sync Movie**.
 
 ---
 
@@ -38,11 +58,12 @@ There's also a `Portable.zip` that runs without installing: unzip it, then open 
 
 Run from source:
 
-```powershell
+```bash
 python -m venv .venv
-.venv\Scripts\pip install -r requirements.txt
-# Put ffmpeg.exe in desktop-app\ffmpeg\ (or have ffmpeg on PATH), then:
-.venv\Scripts\python -m movie_album_sync
+# Windows: .venv\Scripts\pip ...   Mac: .venv/bin/pip ...
+pip install -r requirements.txt
+# Put ffmpeg in desktop-app/ffmpeg/ (or have ffmpeg on PATH), then:
+python -m movie_album_sync
 ```
 
 Run the tests: `python -m unittest discover -s tests`
@@ -52,14 +73,15 @@ Run the tests: `python -m unittest discover -s tests`
 | `movie_album_sync/commands.py` | The ffmpeg commands for each tool (pure functions, unit-tested) |
 | `movie_album_sync/ffmpeg.py` | Finds the bundled ffmpeg and runs jobs in the background with progress |
 | `movie_album_sync/app.py` | The window and tabs |
-| `movie_album_sync/themes.py` | Theme presets and palettes. Add a preset to `PRESET_GROUPS`, and `tests/test_themes.py` checks that it's readable. |
-| `build-windows.ps1` | Runs the tests, downloads ffmpeg, builds the app with PyInstaller, then makes the installer with Inno Setup |
+| `movie_album_sync/themes.py` | Theme presets and palettes. Add a preset to `PRESET_GROUPS`, and `tests/test_themes.py` checks that it's readable. Give fonts as "Windows font, Mac font". |
+| `build-windows.ps1` | Runs the tests, downloads ffmpeg, builds the app with PyInstaller, self-tests it, then makes the installer with Inno Setup |
+| `build-mac.sh` | The same for Mac, ending with a `.dmg` |
 | `installer.iss` | Inno Setup installer script |
-| `make_icon.py` | Regenerates `assets/icon.ico` |
+| `make_icon.py` | Regenerates `assets/icon.ico` and `assets/icon.png` |
 
-To release a new version, bump `__version__` in `movie_album_sync/__init__.py`, then build or tag.
+A packaged app can be checked with `--self-test`: it builds the window offscreen, runs the bundled ffmpeg, and exits 0 if everything works.
 
 ### Notes
 
-- **Bundled ffmpeg:** the build uses the "essentials" build from [gyan.dev](https://www.gyan.dev/ffmpeg/builds/). It includes x264/x265, which are GPL-licensed, and its license ships with the app (`_internal\ffmpeg\LICENSE.txt`). Sharing the app with friends is fine. If you distribute it widely, keep the source public and license the app under the GPL.
-- **"Windows protected your PC":** this warning appears because the installer isn't code-signed. Removing it requires a code-signing certificate, for example Azure Trusted Signing at about $10/month.
+- **Bundled ffmpeg:** Windows uses the "essentials" build from [gyan.dev](https://www.gyan.dev/ffmpeg/builds/). Mac uses the release builds from [ffmpeg.martin-riedl.de](https://ffmpeg.martin-riedl.de/). Both include x264/x265, which are GPL-licensed, and the license ships inside the app. Sharing the app with friends is fine. If you distribute it widely, keep the source public and license the app under the GPL.
+- **Security warnings:** the "Windows protected your PC" and "macOS can't verify this app" messages appear because the downloads aren't signed. Removing them costs money: a Windows code-signing certificate (e.g. Azure Trusted Signing, about $10/month), and Apple's Developer Program ($99/year) for Mac signing and notarization.

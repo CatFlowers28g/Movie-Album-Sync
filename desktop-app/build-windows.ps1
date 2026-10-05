@@ -70,7 +70,12 @@ Invoke-Native {
         "$root\launch.py"
 }
 
-# 5. Downloads
+# 5. Make sure the packaged app starts and can run its ffmpeg
+$selfTest = Start-Process "$appDir\MovieAlbumSync.exe" -ArgumentList '--self-test' -Wait -PassThru
+if ($selfTest.ExitCode) { throw "Self-test of the packaged app failed (exit code $($selfTest.ExitCode))" }
+Write-Host 'Self-test passed'
+
+# 6. Downloads
 $dist = Join-Path $root 'dist'
 New-Item -ItemType Directory -Force $dist | Out-Null
 $portable = Join-Path $dist "MovieAlbumSync-$version-Portable.zip"

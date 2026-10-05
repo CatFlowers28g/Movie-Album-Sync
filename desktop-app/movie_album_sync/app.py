@@ -21,20 +21,32 @@ from PySide6.QtWidgets import (
 )
 
 from . import __version__, commands, themes
-from .ffmpeg import FFmpegJob, find_ffmpeg, media_info, probe_duration
+from .ffmpeg import NO_WINDOW, FFmpegJob, find_ffmpeg, media_info, probe_duration
 from .themes import CUSTOM, SYSTEM, Theme
 
 APP_NAME = "Movie Album Sync"
 TEMP_DIR = Path(tempfile.gettempdir()) / "MovieAlbumSync"
 
+IS_MAC = sys.platform == "darwin"
+PLATFORM_NAME = "macOS" if IS_MAC else "Windows" if os.name == "nt" else "Linux"
+
 TEXT_SIZES = {"Small": 0.9, "Normal": 1.0, "Large": 1.2, "Extra large": 1.45}
 THEME_FONT = "Theme's font"
-FONT_CHOICES = ("Segoe UI", "Bahnschrift", "Trebuchet MS", "Verdana", "Georgia", "Consolas", "Cascadia Code",
-                "Courier New", "Comic Sans MS", "Ink Free", "Segoe Print")
-# Sounds that ship with Windows, in C:\Windows\Media
-SOUNDS = {"Off": "", "Tada": "tada.wav", "Chimes": "chimes.wav", "Ding": "ding.wav", "Chord": "chord.wav",
-          "Notify": "notify.wav", "Alarm": "Alarm01.wav", "Ring": "Ring01.wav"}
-ERROR_SOUND = "Windows Critical Stop.wav"
+# Windows and Mac fonts; the Settings tab only lists the ones installed
+FONT_CHOICES = ("Segoe UI", "Helvetica Neue", "Avenir Next", "Bahnschrift", "Futura", "Trebuchet MS", "Verdana",
+                "Georgia", "Consolas", "Menlo", "Cascadia Code", "Courier New", "Comic Sans MS", "Chalkboard SE",
+                "Ink Free", "Segoe Print", "Noteworthy", "Marker Felt")
+# Sounds that ship with the operating system
+if IS_MAC:
+    SOUND_FOLDER = Path("/System/Library/Sounds")
+    SOUNDS = {"Off": "", "Glass": "Glass.aiff", "Hero": "Hero.aiff", "Ping": "Ping.aiff", "Pop": "Pop.aiff",
+              "Purr": "Purr.aiff", "Submarine": "Submarine.aiff", "Funk": "Funk.aiff"}
+    ERROR_SOUND = "Basso.aiff"
+else:
+    SOUND_FOLDER = Path(os.environ.get("WINDIR", r"C:\Windows")) / "Media"
+    SOUNDS = {"Off": "", "Tada": "tada.wav", "Chimes": "chimes.wav", "Ding": "ding.wav", "Chord": "chord.wav",
+              "Notify": "notify.wav", "Alarm": "Alarm01.wav", "Ring": "Ring01.wav"}
+    ERROR_SOUND = "Windows Critical Stop.wav"
 
 
 def primary_button_style(accent: str) -> str:
@@ -58,11 +70,14 @@ QProgressBar::chunk {{ background: {accent}; border-radius: 5px; }}
 def play_sound(file_name: str):
     if not file_name:
         return
-    if os.name == "nt":
-        import winsound
-        path = Path(os.environ.get("WINDIR", r"C:\Windows")) / "Media" / file_name
-        if path.is_file():
+    path = SOUND_FOLDER / file_name
+    if path.is_file():
+        if os.name == "nt":
+            import winsound
             winsound.PlaySound(str(path), winsound.SND_FILENAME | winsound.SND_ASYNC | winsound.SND_NODEFAULT)
+            return
+        if IS_MAC:
+            subprocess.Popen(["afplay", str(path)])
             return
     QApplication.beep()
 
@@ -728,7 +743,7 @@ class SettingsPage(Page):
 
         self.theme = QComboBox()
         self.theme.setMaxVisibleItems(30)
-        self.theme.addItem("🖥️  " + SYSTEM, SYSTEM)
+        self.theme.addItem(f"🖥️  {SYSTEM} ({PLATFORM_NAME})", SYSTEM)
         for group, presets in themes.PRESET_GROUPS.items():
             self._add_heading(group)
             for name, theme in presets.items():
@@ -873,7 +888,7 @@ class MainWindow(QMainWindow):
         self.details_button.toggled.connect(self._toggle_details)
         self.play_button = QPushButton("Play")
         self.play_button.clicked.connect(lambda: open_file(self._job_output))
-        self.folder_button = QPushButton("Show in Folder")
+        self.folder_button = QPushButton("Show in Finder" if IS_MAC else "Show in Folder")
         self.folder_button.clicked.connect(lambda: show_in_folder(self._job_output))
         self.cancel_button = QPushButton("Cancel")
         self.cancel_button.clicked.connect(self.cancel_job)
@@ -944,9 +959,9 @@ class MainWindow(QMainWindow):
 
         scale = TEXT_SIZES.get(self.settings.value("ui/text_size", "Normal"), 1.0)
         font = QFont(self._base_font)
-        family = self.settings.value("ui/font", "") or theme.font
-        if family:
-            font.setFamily(family)
+        families = self.settings.value("ui/font", "") or theme.font
+        if families:
+            font.setFamilies([family.strip() for family in families.split(",")])  # first installed one wins
         font.setPointSizeF(self._base_font.pointSizeF() * scale)
         app.setFont(font)
         mono = QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont)
@@ -1038,7 +1053,29 @@ class MainWindow(QMainWindow):
         event.accept()
 
 
+def self_test() -> int:
+    """Checks a packaged build can start, build its window, and run its bundled ffmpeg.
+
+    The build scripts run the app with --self-test; it exits 0 on success without showing anything.
+    """
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    app = QApplication(sys.argv[:1])
+    ffmpeg = find_ffmpeg()
+    if not ffmpeg:
+        print("Self-test failed: ffmpeg not found")
+        return 1
+    result = subprocess.run([ffmpeg, "-hide_banner", "-version"], stdin=subprocess.DEVNULL, capture_output=True,
+                            text=True, creationflags=NO_WINDOW)
+    MainWindow(ffmpeg)  # builds every tab and applies the saved theme
+    app.processEvents()
+    version = result.stdout.splitlines()[0] if result.stdout else "no output"
+    print(f"Self-test {'passed' if result.returncode == 0 else 'failed'}: {ffmpeg} ({version})")
+    return result.returncode
+
+
 def main() -> int:
+    if "--self-test" in sys.argv:
+        return self_test()
     if os.name == "nt":
         import ctypes
         # Use the app's own icon in the taskbar instead of Python's

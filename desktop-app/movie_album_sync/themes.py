@@ -7,7 +7,7 @@ from dataclasses import asdict, dataclass, fields
 
 from PySide6.QtGui import QColor, QPalette
 
-SYSTEM = "System (Windows)"
+SYSTEM = "System"
 CUSTOM = "Custom"
 DEFAULT_ACCENT = "#7C3AED"
 
@@ -18,7 +18,7 @@ class Theme:
     panel: str  # input fields, lists, and buttons
     text: str
     accent: str  # main buttons, progress bar, and selections
-    font: str = ""  # preferred font family; empty means the system font
+    font: str = ""  # preferred font families, comma-separated (Windows font, then Mac fallback); empty = system font
     icon: str = ""
 
 
@@ -42,17 +42,17 @@ PRESET_GROUPS: dict[str, dict[str, Theme]] = {
         "Bulbasaur": Theme("#EAF6EE", "#FFFFFF", "#1B4332", "#2E8B57", "Trebuchet MS", "🌿"),
     },
     "Music": {
-        "Grateful Dead": Theme("#101A33", "#1B2A4E", "#F7F1E3", "#E63946", "Segoe Print", "🌹"),
+        "Grateful Dead": Theme("#101A33", "#1B2A4E", "#F7F1E3", "#E63946", "Segoe Print, Noteworthy", "🌹"),
     },
     "Horror": {
         "Slasher": Theme("#0A0A0A", "#171010", "#E8DADA", "#C1001F", "Georgia", "🔪"),
     },
     "Movies & more": {
-        "Matrix": Theme("#000000", "#06140A", "#00FF41", "#00C832", "Consolas", "💊"),
-        "Synthwave": Theme("#1A0B2E", "#2A1446", "#F9E8FF", "#FF2E97", "Bahnschrift", "🌆"),
-        "Tron": Theme("#05080D", "#0C1622", "#CFF8FF", "#00E5FF", "Bahnschrift", "💠"),
-        "Sith": Theme("#0B0B0D", "#19191D", "#EDEDED", "#E10600", "Bahnschrift", "🔴"),
-        "Jedi": Theme("#0A1124", "#15213F", "#E3EEFF", "#2E8BFF", "Bahnschrift", "🔵"),
+        "Matrix": Theme("#000000", "#06140A", "#00FF41", "#00C832", "Consolas, Menlo", "💊"),
+        "Synthwave": Theme("#1A0B2E", "#2A1446", "#F9E8FF", "#FF2E97", "Bahnschrift, Avenir Next Condensed", "🌆"),
+        "Tron": Theme("#05080D", "#0C1622", "#CFF8FF", "#00E5FF", "Bahnschrift, Avenir Next Condensed", "💠"),
+        "Sith": Theme("#0B0B0D", "#19191D", "#EDEDED", "#E10600", "Bahnschrift, Avenir Next Condensed", "🔴"),
+        "Jedi": Theme("#0A1124", "#15213F", "#E3EEFF", "#2E8BFF", "Bahnschrift, Avenir Next Condensed", "🔵"),
         "Ocean": Theme("#0B2A3C", "#12384F", "#E0F4FF", "#1FB5C9", "", "🌊"),
         "Sunset": Theme("#FFF1E6", "#FFFFFF", "#4A2C2A", "#E8434B", "", "🌅"),
     },
