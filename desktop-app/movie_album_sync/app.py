@@ -7,34 +7,64 @@ import subprocess
 import sys
 import tempfile
 import time
+from dataclasses import replace
 from pathlib import Path
 from typing import Callable
 
-from PySide6.QtCore import QSettings, Qt, QUrl, Signal
-from PySide6.QtGui import QColor, QDesktopServices, QFontDatabase, QIcon, QPainter, QPalette
+from PySide6.QtCore import QSettings, QSize, Qt, QTimer, QUrl, Signal
+from PySide6.QtGui import QColor, QDesktopServices, QFont, QFontDatabase, QIcon, QPainter, QPalette
 from PySide6.QtWidgets import (
-    QAbstractItemView, QApplication, QComboBox, QDoubleSpinBox, QFileDialog, QFormLayout, QFrame,
-    QHBoxLayout, QLabel, QLineEdit, QListWidget, QListWidgetItem, QMainWindow, QMessageBox,
-    QPlainTextEdit, QProgressBar, QPushButton, QSpinBox, QTabWidget, QVBoxLayout, QWidget,
+    QAbstractItemView, QApplication, QColorDialog, QComboBox, QDoubleSpinBox, QFileDialog, QFormLayout,
+    QFrame, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QListWidget, QListWidgetItem, QMainWindow,
+    QMessageBox, QPlainTextEdit, QProgressBar, QPushButton, QScrollArea, QSpinBox, QTabWidget, QVBoxLayout,
+    QWidget,
 )
 
-from . import __version__, commands
+from . import __version__, commands, themes
 from .ffmpeg import FFmpegJob, find_ffmpeg, media_info, probe_duration
+from .themes import CUSTOM, SYSTEM, Theme
 
 APP_NAME = "Movie Album Sync"
-ACCENT = "#7C3AED"
-ACCENT_HOVER = "#6D28D9"
 TEMP_DIR = Path(tempfile.gettempdir()) / "MovieAlbumSync"
 
-PRIMARY_BUTTON_STYLE = f"""
-QPushButton {{ background: {ACCENT}; color: white; border: none; border-radius: 6px; padding: 8px 22px; font-weight: 600; }}
-QPushButton:hover {{ background: {ACCENT_HOVER}; }}
-QPushButton:disabled {{ background: #B9A6E8; }}
+TEXT_SIZES = {"Small": 0.9, "Normal": 1.0, "Large": 1.2, "Extra large": 1.45}
+THEME_FONT = "Theme's font"
+FONT_CHOICES = ("Segoe UI", "Bahnschrift", "Trebuchet MS", "Verdana", "Georgia", "Consolas", "Cascadia Code",
+                "Courier New", "Comic Sans MS", "Ink Free", "Segoe Print")
+# Sounds that ship with Windows, in C:\Windows\Media
+SOUNDS = {"Off": "", "Tada": "tada.wav", "Chimes": "chimes.wav", "Ding": "ding.wav", "Chord": "chord.wav",
+          "Notify": "notify.wav", "Alarm": "Alarm01.wav", "Ring": "Ring01.wav"}
+ERROR_SOUND = "Windows Critical Stop.wav"
+
+
+def primary_button_style(accent: str) -> str:
+    color = QColor(accent)
+    hover = color.lighter(115) if themes.luminance(color) < 0.3 else color.darker(112)
+    return f"""
+QPushButton {{ background: {color.name()}; color: {themes.text_on(color)}; border: none; border-radius: 6px;
+               padding: 8px 22px; font-weight: 600; }}
+QPushButton:hover {{ background: {hover.name()}; }}
+QPushButton:disabled {{ background: rgba({color.red()}, {color.green()}, {color.blue()}, 110); }}
 """
-PROGRESS_STYLE = f"""
+
+
+def progress_style(accent: str) -> str:
+    return f"""
 QProgressBar {{ border: none; border-radius: 6px; background: rgba(128, 128, 128, 60); min-height: 12px; max-height: 12px; }}
-QProgressBar::chunk {{ background: {ACCENT}; border-radius: 5px; }}
+QProgressBar::chunk {{ background: {accent}; border-radius: 5px; }}
 """
+
+
+def play_sound(file_name: str):
+    if not file_name:
+        return
+    if os.name == "nt":
+        import winsound
+        path = Path(os.environ.get("WINDIR", r"C:\Windows")) / "Media" / file_name
+        if path.is_file():
+            winsound.PlaySound(str(path), winsound.SND_FILENAME | winsound.SND_ASYNC | winsound.SND_NODEFAULT)
+            return
+    QApplication.beep()
 
 
 def _file_filter(label: str, extensions: tuple[str, ...]) -> str:
@@ -77,18 +107,56 @@ def same_path(a: str, b: str) -> bool:
     return os.path.normcase(os.path.abspath(a)) == os.path.normcase(os.path.abspath(b))
 
 
+class WrappingLabel(QLabel):
+    """A word-wrapped label that asks for only the height its text needs at its current width.
+
+    A plain wrapped QLabel reserves height as if it were squeezed narrow, which leaves big gaps
+    between form rows when the text is large.
+    """
+
+    def __init__(self, text: str = ""):
+        super().__init__(text)
+        self.setWordWrap(True)
+        self.setMinimumWidth(240)
+
+    def sizeHint(self) -> QSize:
+        hint = super().sizeHint()
+        return QSize(hint.width(), self.heightForWidth(self.width() if self.width() > 1 else hint.width()))
+
+    def minimumSizeHint(self) -> QSize:
+        return QSize(super().minimumSizeHint().width(), self.sizeHint().height())
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if event.size().width() != event.oldSize().width():
+            self.updateGeometry()  # the height it needs changed with the width
+
+
 def hint_label(text: str = "") -> QLabel:
-    label = QLabel(text)
-    label.setWordWrap(True)
-    label.setStyleSheet("color: #888;")
+    """Secondary help text; MainWindow.apply_appearance colors it to suit the theme."""
+    label = WrappingLabel(text)
+    label.setObjectName("hint")
     return label
 
 
 def primary_button(text: str) -> QPushButton:
+    """The main action button on a tab; MainWindow.apply_appearance gives it the accent color."""
     button = QPushButton(text)
-    button.setStyleSheet(PRIMARY_BUTTON_STYLE)
+    button.setObjectName("primary")
     button.setCursor(Qt.CursorShape.PointingHandCursor)
     return button
+
+
+_system_look: tuple[str, QPalette, QFont] | None = None
+
+
+def system_look() -> tuple[str, QPalette, QFont]:
+    """The native style, palette, and font, captured before any theme changes them."""
+    global _system_look
+    if _system_look is None:
+        app = QApplication.instance()
+        _system_look = (app.style().name(), QPalette(app.palette()), QFont(app.font()))
+    return _system_look
 
 
 def clean_temp_files():
@@ -184,9 +252,7 @@ class Page(QWidget):
         self.main = main
         self.page_layout = QVBoxLayout(self)
         self.page_layout.setContentsMargins(16, 14, 16, 10)
-        intro_label = QLabel(intro)
-        intro_label.setWordWrap(True)
-        self.page_layout.addWidget(intro_label)
+        self.page_layout.addWidget(WrappingLabel(intro))
         self.page_layout.addSpacing(6)
         self.form = QFormLayout()
         self.form.setVerticalSpacing(10)
@@ -397,7 +463,7 @@ class TrackList(QListWidget):
         super().paintEvent(event)
         if self.count() == 0:
             painter = QPainter(self.viewport())
-            painter.setPen(QColor("#888"))
+            painter.setPen(self.palette().color(QPalette.ColorRole.PlaceholderText))
             painter.drawText(self.viewport().rect(), Qt.AlignmentFlag.AlignCenter,
                              "Drag the album's tracks here,\nor click Add Tracks...")
 
@@ -630,25 +696,170 @@ class InfoPage(Page):
             Path(path).write_text(text + "\n", encoding="utf-8")
 
 
+class ColorButton(QPushButton):
+    """A color swatch that opens a color picker when clicked."""
+
+    picked = Signal(str, str)  # theme field, new color
+
+    def __init__(self, field: str, label: str):
+        super().__init__()
+        self.field = field
+        self.label = label
+        self.color = "#000000"
+        self.setMinimumWidth(120)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.clicked.connect(self._pick)
+
+    def set_color(self, color: str):
+        self.color = QColor(color).name().upper()
+        self.setText(self.color)
+        self.setStyleSheet(f"QPushButton {{ background: {self.color}; color: {themes.text_on(self.color)}; "
+                           "border: 1px solid rgba(128, 128, 128, 140); border-radius: 6px; padding: 6px 14px; }")
+
+    def _pick(self):
+        color = QColorDialog.getColor(QColor(self.color), self, f"Choose the {self.label.lower()} color")
+        if color.isValid():
+            self.picked.emit(self.field, color.name())
+
+
+class SettingsPage(Page):
+    def __init__(self, main: MainWindow):
+        super().__init__(main, "Make the app look and sound the way you like. Changes apply right away.")
+
+        self.theme = QComboBox()
+        self.theme.setMaxVisibleItems(30)
+        self.theme.addItem("🖥️  " + SYSTEM, SYSTEM)
+        for group, presets in themes.PRESET_GROUPS.items():
+            self._add_heading(group)
+            for name, theme in presets.items():
+                self.theme.addItem(f"{theme.icon}  {name}", name)
+        self._add_heading("Yours")
+        self.theme.addItem("🎨  " + CUSTOM, CUSTOM)
+        self.theme.currentIndexChanged.connect(self._theme_chosen)
+
+        self.color_buttons: dict[str, ColorButton] = {}
+        colors = QGridLayout()
+        for index, (field, label) in enumerate(themes.COLOR_FIELDS.items()):
+            button = ColorButton(field, label)
+            button.picked.connect(self._color_picked)
+            self.color_buttons[field] = button
+            colors.addWidget(QLabel(label), index // 2, (index % 2) * 2)
+            colors.addWidget(button, index // 2, (index % 2) * 2 + 1)
+        colors.setHorizontalSpacing(12)
+        colors.setColumnMinimumWidth(2, 110)  # room between the two columns of swatches
+        colors.setColumnStretch(4, 1)
+
+        self.text_size = QComboBox()
+        self.text_size.addItems(list(TEXT_SIZES))
+        self.text_size.currentTextChanged.connect(lambda size: self._save("ui/text_size", size))
+        installed = set(QFontDatabase.families())
+        self.font_choice = QComboBox()
+        self.font_choice.addItem(THEME_FONT)
+        for family in FONT_CHOICES:
+            if family in installed:
+                self.font_choice.addItem(family)
+                self.font_choice.setItemData(self.font_choice.count() - 1, QFont(family), Qt.ItemDataRole.FontRole)
+        self.font_choice.currentTextChanged.connect(lambda family: self._save("ui/font", "" if family == THEME_FONT else family))
+        self.sound = QComboBox()
+        self.sound.addItems(list(SOUNDS))
+        self.sound.currentTextChanged.connect(self._sound_chosen)
+
+        self.form.addRow("Theme:", self.theme)
+        self.form.addRow("Colors:", colors)
+        self.form.addRow("", hint_label("Click a color to change it. Your changes are saved as the Custom theme."))
+        self.form.addRow("Text size:", self.text_size)
+        self.form.addRow("Font:", self.font_choice)
+        self.form.addRow("Sound when done:", self.sound)
+        self.page_layout.addStretch()
+
+        reset = QPushButton("Reset to Defaults")
+        reset.clicked.connect(self._reset)
+        self.add_buttons(reset)
+        self.load()
+
+    def _add_heading(self, text: str):
+        self.theme.insertSeparator(self.theme.count())
+        self.theme.addItem(text.upper())
+        self.theme.model().item(self.theme.count() - 1).setEnabled(False)
+
+    def load(self):
+        """Show the saved settings without triggering any change handlers."""
+        settings = self.main.settings
+        for widget, value in ((self.theme, None), (self.text_size, settings.value("ui/text_size", "Normal")),
+                              (self.font_choice, settings.value("ui/font", "") or THEME_FONT),
+                              (self.sound, settings.value("ui/sound", "Off"))):
+            widget.blockSignals(True)
+            if widget is self.theme:
+                index = self.theme.findData(self.main.theme_name())
+                self.theme.setCurrentIndex(max(index, 0))
+            else:
+                widget.setCurrentText(value)
+            widget.blockSignals(False)
+        self._show_colors()
+
+    def _show_colors(self):
+        theme = self.main.current_theme()
+        for field, button in self.color_buttons.items():
+            button.set_color(getattr(theme, field))
+
+    def _save(self, key: str, value: str):
+        self.main.settings.setValue(key, value)
+        self.main.apply_appearance()
+
+    def _theme_chosen(self):
+        name = self.theme.currentData()
+        if name == CUSTOM and not themes.theme_from_json(self.main.settings.value("ui/custom", "")):
+            # No custom theme yet: start one from the current colors
+            self.main.settings.setValue("ui/custom", themes.theme_to_json(self.main.current_theme()))
+        self._save("ui/theme", name)
+        self._show_colors()
+
+    def _color_picked(self, field: str, color: str):
+        custom = replace(self.main.current_theme(), **{field: color}, icon="🎨")
+        self.main.settings.setValue("ui/custom", themes.theme_to_json(custom))
+        self.theme.blockSignals(True)
+        self.theme.setCurrentIndex(self.theme.findData(CUSTOM))
+        self.theme.blockSignals(False)
+        self._save("ui/theme", CUSTOM)
+        self._show_colors()
+
+    def _sound_chosen(self, name: str):
+        self.main.settings.setValue("ui/sound", name)
+        play_sound(SOUNDS[name])  # let them hear it
+
+    def _reset(self):
+        for key in ("ui/theme", "ui/custom", "ui/text_size", "ui/font", "ui/sound"):
+            self.main.settings.remove(key)
+        self.load()
+        self.main.apply_appearance()
+
+
 class MainWindow(QMainWindow):
     def __init__(self, ffmpeg: str):
         super().__init__()
         self.ffmpeg = ffmpeg
         self.settings = QSettings("MovieAlbumSync", APP_NAME)
+        self._system_style, self._system_palette, self._base_font = system_look()
         self.job: FFmpegJob | None = None
         self._job_title = ""
         self._job_output = ""
         self._on_success: Callable[[str], str | None] | None = None
 
         self.setWindowTitle(APP_NAME)
-        self.resize(800, 640)
-        self.setMinimumSize(660, 540)
+        self.resize(860, 660)  # the layout sets the minimum, which grows with bigger text and wider fonts
 
         self.sync_page = SyncPage(self)
-        self.pages = [self.sync_page, CombinePage(self, self.sync_page), ConvertPage(self), InfoPage(self)]
+        self.pages = [self.sync_page, CombinePage(self, self.sync_page), ConvertPage(self), InfoPage(self),
+                      SettingsPage(self)]
         self.tabs = QTabWidget()
-        for page, title in zip(self.pages, ("Sync Album", "Combine Tracks", "Convert", "File Info")):
-            self.tabs.addTab(page, title)
+        self.tabs.setUsesScrollButtons(False)  # always show every tab in full
+        for page, title in zip(self.pages, ("Sync Album", "Combine Tracks", "Convert", "File Info", "Settings")):
+            # Scrolls instead of squashing when big text or a wide font doesn't fit the window
+            scroll = QScrollArea()
+            scroll.setWidget(page)
+            scroll.setWidgetResizable(True)
+            scroll.setFrameShape(QFrame.Shape.NoFrame)
+            self.tabs.addTab(scroll, title)
 
         self.status = QLabel("Choose a tool above to get started.")
         self.status.setWordWrap(True)
@@ -656,7 +867,6 @@ class MainWindow(QMainWindow):
         self.progress = QProgressBar()
         self.progress.setRange(0, 1000)
         self.progress.setTextVisible(False)
-        self.progress.setStyleSheet(PROGRESS_STYLE)
 
         self.details_button = QPushButton("Show Details")
         self.details_button.setCheckable(True)
@@ -694,6 +904,64 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.tabs, 1)
         layout.addWidget(panel)
         self.setCentralWidget(central)
+        self.apply_appearance()
+
+    def theme_name(self) -> str:
+        """The saved theme's name, falling back to System if it's unknown or the custom one is unreadable."""
+        name = self.settings.value("ui/theme", SYSTEM)
+        if name in themes.PRESETS or (name == CUSTOM and themes.theme_from_json(self.settings.value("ui/custom", ""))):
+            return name
+        return SYSTEM
+
+    def current_theme(self) -> Theme:
+        name = self.theme_name()
+        if name == CUSTOM:
+            return themes.theme_from_json(self.settings.value("ui/custom", ""))
+        if name in themes.PRESETS:
+            return themes.PRESETS[name]
+        palette = self._system_palette
+        return Theme(palette.color(QPalette.ColorRole.Window).name(), palette.color(QPalette.ColorRole.Base).name(),
+                     palette.color(QPalette.ColorRole.WindowText).name(), themes.DEFAULT_ACCENT)
+
+    def apply_appearance(self):
+        """Apply the saved theme, font, and text size to the whole app."""
+        app = QApplication.instance()
+        theme = self.current_theme()
+        hints = app.styleHints()
+        if self.theme_name() == SYSTEM:
+            app.setStyle(self._system_style)
+            hints.unsetColorScheme()
+            palette = QPalette(self._system_palette)
+            palette.setColor(QPalette.ColorRole.Highlight, QColor(theme.accent))
+            palette.setColor(QPalette.ColorRole.Accent, QColor(theme.accent))
+            palette.setColor(QPalette.ColorRole.HighlightedText, QColor("white"))
+        else:
+            # Fusion draws everything from the palette, so it can show any colors
+            app.setStyle("Fusion")
+            hints.setColorScheme(Qt.ColorScheme.Dark if themes.is_dark(theme) else Qt.ColorScheme.Light)  # title bar
+            palette = themes.build_palette(theme)
+        app.setPalette(palette)
+
+        scale = TEXT_SIZES.get(self.settings.value("ui/text_size", "Normal"), 1.0)
+        font = QFont(self._base_font)
+        family = self.settings.value("ui/font", "") or theme.font
+        if family:
+            font.setFamily(family)
+        font.setPointSizeF(self._base_font.pointSizeF() * scale)
+        app.setFont(font)
+        mono = QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont)
+        mono.setPointSizeF(mono.pointSizeF() * scale)
+        for text_box in self.findChildren(QPlainTextEdit):
+            text_box.setFont(mono)
+
+        for button in self.findChildren(QPushButton, "primary"):
+            button.setStyleSheet(primary_button_style(theme.accent))
+        self.progress.setStyleSheet(progress_style(theme.accent))
+        hint = themes.hint_color(theme).name()
+        for label in self.findChildren(QLabel, "hint"):
+            label.setStyleSheet(f"color: {hint};")
+        # Widen the window if the tabs no longer fit (once the font change has been laid out)
+        QTimer.singleShot(0, lambda: self.resize(self.size().expandedTo(self.minimumSizeHint())))
 
     def start_job(self, title: str, args: list[str], expected_seconds: Callable[[], float | None], output: str,
                   on_success: Callable[[str], str | None] | None = None):
@@ -737,11 +1005,15 @@ class MainWindow(QMainWindow):
         self.cancel_button.hide()
         self.progress.setRange(0, 1000)
         self.progress.setValue(1000 if success else 0)
+        sound = SOUNDS.get(self.settings.value("ui/sound", "Off"), "")
         if not success:
             self.status.setText(message)
             if message != "Cancelled.":
                 self.details_button.setChecked(True)
+                if sound:
+                    play_sound(ERROR_SOUND)
             return
+        play_sound(sound)
         text = f"Done! Saved {os.path.basename(self._job_output)}"
         if self._on_success:
             text = self._on_success(self._job_output) or text
@@ -776,11 +1048,6 @@ def main() -> int:
     app.setApplicationName(APP_NAME)
     app.setApplicationVersion(__version__)
     app.setWindowIcon(QIcon(str(resource_path("assets/icon.ico"))))
-    palette = app.palette()
-    palette.setColor(QPalette.ColorRole.Highlight, QColor(ACCENT))
-    palette.setColor(QPalette.ColorRole.Accent, QColor(ACCENT))
-    palette.setColor(QPalette.ColorRole.HighlightedText, QColor("white"))
-    app.setPalette(palette)
     clean_temp_files()
 
     ffmpeg = find_ffmpeg()

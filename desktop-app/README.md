@@ -8,8 +8,9 @@ A single-window app for syncing an album to a movie. It's built for people who d
 | **Combine Tracks** | Joins separate tracks into one album file. Drag tracks to reorder them. The result is added to the Sync Album tab automatically. |
 | **Convert** | Converts a video to MP4/MKV/MOV, with a choice of video codec, size and audio format. |
 | **File Info** | Shows a file's format, length and streams, and can save them as a text file. |
+| **Settings** | Theme presets: System, Light and Dark, Pikachu, Charizard, Gengar, Bulbasaur, Grateful Dead, Slasher, Matrix, Synthwave, Tron, Sith, Jedi, Ocean, Sunset. Click any of the four color swatches to make a Custom theme. Also sets the text size, the font, and a sound when a job finishes. |
 
-The app remembers the last timing, format, preview length, convert choices and folder used.
+The app remembers the last timing, format, preview length, convert choices, folder and settings used.
 
 ---
 
@@ -51,6 +52,7 @@ Run the tests: `python -m unittest discover -s tests`
 | `movie_album_sync/commands.py` | The ffmpeg commands for each tool (pure functions, unit-tested) |
 | `movie_album_sync/ffmpeg.py` | Finds the bundled ffmpeg and runs jobs in the background with progress |
 | `movie_album_sync/app.py` | The window and tabs |
+| `movie_album_sync/themes.py` | Theme presets and palettes. Add a preset to `PRESET_GROUPS`, and `tests/test_themes.py` checks that it's readable. |
 | `build-windows.ps1` | Runs the tests, downloads ffmpeg, builds the app with PyInstaller, then makes the installer with Inno Setup |
 | `installer.iss` | Inno Setup installer script |
 | `make_icon.py` | Regenerates `assets/icon.ico` |
