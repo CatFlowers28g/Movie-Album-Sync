@@ -1,5 +1,7 @@
 # FFmpeg AppleScript Toolkit
 
+> This is the **macOS** version. For Windows see [../desktop-app/](../desktop-app/), for Linux see [../linux-app/](../linux-app/).
+
 One unified macOS app for all ffmpeg workflows in this folder. The source now builds a single app that contains the following tools:
 
 - Movie Sync Audio

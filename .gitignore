@@ -1,0 +1,8 @@
+.DS_Store
+__pycache__/
+*.pyc
+.venv/
+
+# Desktop app build output and a local ffmpeg for running from source
+desktop-app/dist/
+desktop-app/ffmpeg/
